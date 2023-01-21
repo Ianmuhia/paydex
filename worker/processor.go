@@ -27,7 +27,6 @@ type RedisTaskProcessor struct {
 	mpesa    *mpesa.Mpesa
 	c        *config.Config
 	redisOpt asynq.RedisClientOpt
-	// TODO: look for a cleaner way to do this.
 }
 
 func NewRedisTaskProcessor(

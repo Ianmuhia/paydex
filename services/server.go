@@ -12,6 +12,9 @@ import (
 	"paydex/worker"
 	"time"
 
+	_ "expvar"         // Register the expvar handlers
+	_ "net/http/pprof" // Register the pprof handlers
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hibiken/asynq"
@@ -120,6 +123,15 @@ func (s *Server) RunHTTPServer() error {
 	}
 	log.Print("http sever started")
 
+	//Register debug handlers
+	if !s.cfg.Prod {
+		log.Printf("system is in debug mode: running debug servers @http://localhost:8091")
+		debugServer := NewDebugServer("localhost:8091")
+		go func() {
+			log.Fatal(debugServer.ListenAndServe())
+		}()
+	}
+
 	// start a standard HTTP server with the router
 	return srv.ListenAndServe()
 }
@@ -136,4 +148,19 @@ func (s *Server) RunTaskProcessor() error {
 		return err
 	}
 	return nil
+}
+
+type DebugServer struct {
+	*http.Server
+}
+
+// NewDebugServer provides new debug http server
+func NewDebugServer(address string) *DebugServer {
+	return &DebugServer{
+		&http.Server{
+			Addr:        address,
+			Handler:     http.DefaultServeMux,
+			ReadTimeout: 1 * time.Second,
+		},
+	}
 }

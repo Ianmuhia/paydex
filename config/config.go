@@ -10,8 +10,8 @@ type Config struct {
 		Address string
 		Port    string
 		Timeout int
-		Prod    bool
 	}
+	Prod bool
 
 	Redis struct {
 		Address string

@@ -47,7 +47,6 @@ func (processor *RedisTaskProcessor) ProcessTaskSendSTKPush(ctx context.Context,
 		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
 	}
 
-	log.Print(payload.Amount)
 	val := mpesa.StKPushRequestBody{
 		BusinessShortCode: processor.c.Mpesa.ShortCode,
 		Amount:            payload.Amount,
@@ -67,6 +66,6 @@ func (processor *RedisTaskProcessor) ProcessTaskSendSTKPush(ctx context.Context,
 	if data.ResponseCode != "0" {
 		return errors.Wrap(asynq.SkipRetry, "MpesaService.MpesaPay")
 	}
-	slog.Info("processed task", "type", task.Type(), "payload", string(task.Payload()), "email")
+	slog.Info("processed task", "type", task.Type(), "payload", string(task.Payload()))
 	return nil
 }
