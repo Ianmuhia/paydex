@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  cache:
+    image: redis:6.2.6
+    container_name: cache
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    volumes:
+      - cache:/data
+    networks:
+      fainda:
+        aliases:
+          - "cache"
+  asynqmon:
+    image: hibiken/asynqmon:master
+    container_name: monitor
+    restart: unless-stopped
+    #    network_mode: fainda
+    #    command:
+    #      -  '-redis-addr=fainda:6379'
+    ports:
+      - '8060:8060'
+    networks:
+      - fainda
+
+volumes:
+  dbdata:
+  cache:
+    driver: local
+
+networks:
+  fainda:
