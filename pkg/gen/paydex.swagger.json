@@ -55,8 +55,13 @@
       "type": "object",
       "properties": {
         "phoneNumber": {
-          "type": "string",
-          "format": "int64"
+          "type": "string"
+        },
+        "amount": {
+          "type": "string"
+        },
+        "transactionDesc": {
+          "type": "string"
         }
       }
     },

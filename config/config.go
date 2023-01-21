@@ -6,12 +6,13 @@ import (
 )
 
 type Config struct {
-	Server struct {
+	Servers map[string]struct {
 		Address string
 		Port    string
 		Timeout int
 		Prod    bool
 	}
+
 	Redis struct {
 		Address string
 		Port    string
@@ -35,6 +36,5 @@ func MustLoad(loc string) (Config, error) {
 	if _, err := toml.DecodeFile(loc, &config); err != nil {
 		return config, errors.Wrap(err, "Unable to decode config")
 	}
-
 	return config, nil
 }

@@ -14,6 +14,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hibiken/asynq"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
@@ -23,21 +24,29 @@ import (
 
 type Server struct {
 	pb.UnimplementedPaydexServiceServer
-	worker worker.TaskDistributor
-	cfg    *config.Config
-	l      *slog.Logger
+	worker   worker.TaskDistributor
+	cfg      *config.Config
+	redisOpt asynq.RedisClientOpt
+	l        *slog.Logger
 }
 
-func NewServer(worker worker.TaskDistributor, cfg *config.Config, l *slog.Logger) *Server {
+func NewServer(
+	worker worker.TaskDistributor,
+	cfg *config.Config,
+	l *slog.Logger,
+	redisOpt asynq.RedisClientOpt) *Server {
 	return &Server{
-		worker: worker,
-		cfg:    cfg,
-		l:      l,
+		worker:   worker,
+		cfg:      cfg,
+		l:        l,
+		redisOpt: redisOpt,
 	}
 }
 
 func (s *Server) RunGrpcServer() error {
-	lis, err := net.Listen("tcp", "localhost:8090")
+	dsn := fmt.Sprintf("%s:%s", s.cfg.Servers["grpc"].Address, s.cfg.Servers["grpc"].Port)
+
+	lis, err := net.Listen("tcp", dsn)
 	if err != nil {
 		return err
 	}
@@ -63,8 +72,10 @@ func (s *Server) RunHTTPServer() error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	dsn := fmt.Sprintf("%s:%s", s.cfg.Servers["http"].Address, s.cfg.Servers["http"].Port)
 	// dial the gRPC server above to make a client connection
-	conn, err := grpc.Dial("localhost:8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(dsn, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("fail to dial: %w", err)
 	}
@@ -86,25 +97,20 @@ func (s *Server) RunHTTPServer() error {
 
 	// mount a path to expose the generated OpenAPI specification on disk
 	mux.HandleFunc("/swagger-ui/paydex.swagger.json", func(w http.ResponseWriter, r *http.Request) {
-		f, _ := assets.EmbeddedFiles.Open("paydex.swagger.json")
-		g, _ := f.Stat()
-		log.Print(g.Name())
-		http.ServeFile(w, r, g.Name())
-		// http.ServeFile(w, r, "./gen/protos/service.swagger.json")
+		http.ServeFile(w, r, "./gen/protos/service.swagger.json")
 	})
 
 	// mount the Swagger UI that uses the OpenAPI specification path above
 	mux.Handle("/swagger-ui/", http.StripPrefix("/swagger-ui/", http.FileServer(http.FS(assets.EmbeddedFiles))))
-	// mux.Handle("/swagger-ui/", http.StripPrefix("/swagger-ui/", http.FileServer(http.Dir("./swagger-ui"))))
 
 	srv := &http.Server{
 		Addr:              "localhost:8080",
 		Handler:           mux,
 		TLSConfig:         nil,
-		ReadTimeout:       time.Duration(s.cfg.Server.Timeout) * time.Second,
-		ReadHeaderTimeout: time.Duration(s.cfg.Server.Timeout) * time.Second,
-		WriteTimeout:      time.Duration(s.cfg.Server.Timeout) * time.Second,
-		IdleTimeout:       time.Duration(s.cfg.Server.Timeout) * time.Second,
+		ReadTimeout:       time.Duration(s.cfg.Servers["http"].Timeout) * time.Second,
+		ReadHeaderTimeout: time.Duration(s.cfg.Servers["http"].Timeout) * time.Second,
+		WriteTimeout:      time.Duration(s.cfg.Servers["http"].Timeout) * time.Second,
+		IdleTimeout:       time.Duration(s.cfg.Servers["http"].Timeout) * time.Second,
 		MaxHeaderBytes:    0,
 		TLSNextProto:      nil,
 		ConnState:         nil,
@@ -116,4 +122,18 @@ func (s *Server) RunHTTPServer() error {
 
 	// start a standard HTTP server with the router
 	return srv.ListenAndServe()
+}
+
+func (s *Server) RunTaskProcessor() error {
+	taskProcessor := worker.NewRedisTaskProcessor(s.redisOpt, s.cfg)
+	slog.Info("start task processor")
+	if err := taskProcessor.Start(); err != nil {
+		slog.Error("failed to start task processor", err)
+		return err
+	}
+	if err := taskProcessor.StartScheduler(); err != nil {
+		slog.Error("failed to start task scheduler", err)
+		return err
+	}
+	return nil
 }

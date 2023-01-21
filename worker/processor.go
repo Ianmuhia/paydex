@@ -19,6 +19,7 @@ const (
 type TaskProcessor interface {
 	Start() error
 	StartScheduler() error
+	ProcessTaskSendSTKPush(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
@@ -29,7 +30,6 @@ type RedisTaskProcessor struct {
 	// TODO: look for a cleaner way to do this.
 }
 
-// TODO: Send subscription email on biz creation.
 func NewRedisTaskProcessor(
 	redisOpt asynq.RedisClientOpt,
 	c *config.Config,
@@ -66,6 +66,7 @@ func NewRedisTaskProcessor(
 
 func (processor *RedisTaskProcessor) Start() error {
 	mux := asynq.NewServeMux()
+	mux.HandleFunc(TaskSendSTK, processor.ProcessTaskSendSTKPush)
 
 	return processor.server.Start(mux)
 }

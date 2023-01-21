@@ -59,6 +59,10 @@ func (m *StkPushRequest) validate(all bool) error {
 
 	// no validation rules for PhoneNumber
 
+	// no validation rules for Amount
+
+	// no validation rules for TransactionDesc
+
 	if len(errors) > 0 {
 		return StkPushRequestMultiError(errors)
 	}

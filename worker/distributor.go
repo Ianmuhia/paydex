@@ -1,10 +1,13 @@
 package worker
 
 import (
+	"context"
+
 	"github.com/hibiken/asynq"
 )
 
 type TaskDistributor interface {
+	DistributeTaskSendSTKPush(ctx context.Context, payload *STKRequest, opts ...asynq.Option) error
 }
 
 type RedisTaskDistributor struct {

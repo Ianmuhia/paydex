@@ -7,7 +7,7 @@ import (
 )
 
 func GetLogger() *slog.Logger {
-	l := slog.New(slog.NewTextHandler(os.Stdout))
+	l := slog.New(slog.NewJSONHandler(os.Stdout))
 	slog.SetDefault(l)
 	return l
 }

@@ -31,10 +31,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	server := services.NewServer(workerService, &conf, l)
+	server := services.NewServer(workerService, &conf, l, asynq.RedisClientOpt{Addr: dsn})
 
 	go func() {
 		if errx := server.RunGrpcServer(); errx != nil {
+			log.Fatal(errx)
+		}
+	}()
+
+	go func() {
+		if errx := server.RunTaskProcessor(); errx != nil {
 			log.Fatal(errx)
 		}
 	}()
