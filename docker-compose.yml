@@ -24,12 +24,11 @@ services:
     ports:
       - '8060:8060'
     networks:
-      - fainda
+      - paydex
 
 volumes:
-  dbdata:
   cache:
     driver: local
 
 networks:
-  fainda:
+  paydex:

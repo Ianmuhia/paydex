@@ -16,6 +16,6 @@ func GeneratePassword(shortCode, passkey, time string) (string, error) {
 
 //TODO: mpesa services
 //TODO: jenga services
-//TODO: currency conversion api
-//TODO: store all fainled and passed payments
+//TODO: currency conversion api curl -s -XGET 'https://api.exchangerate.host/latest'
+//TODO: store all failed and passed payments
 //TODO: retention periods

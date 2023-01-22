@@ -1,4 +1,3 @@
-DB_URL=postgresql://clj:clj@localhost:5432/fainda?sslmode=disable
 
 ngrok:
 	ngrok http http://192.168.0.101:8090
